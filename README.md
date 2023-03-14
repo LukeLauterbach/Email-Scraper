@@ -1,6 +1,6 @@
 <div id="top"></div>
 
-<h3 align="center">Google Dorking Automation</h3>
+<h3 align="center">Email Scraper</h3>
 
   <p align="center">
     <a href="https://github.com/LukeLauterbach/Email-Scraper">View Demo</a>
