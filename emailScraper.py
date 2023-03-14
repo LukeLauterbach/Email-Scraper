@@ -27,10 +27,13 @@ class bColors:
 debug_mode = False
 delay_mode = False
 delay = 0
+domain = ''
 email_database = []
+email_database_file = ''
 line_count = 0
 num_pages_to_spider = 1000000000
 parameter_mode = False
+url_database_file = ''
 
 
 # ---------------#
@@ -204,6 +207,8 @@ def print_initial_output(l_url, l_domain, l_max):
 def print_ending(l_email_database_file, l_url_database_file):
     count_email_final = sum(1 for l_line in open(l_email_database_file))
     count_url_final = sum(1 for l_line in open(l_url_database_file))
+    if count_url_final > num_pages_to_spider:
+        count_url_final = num_pages_to_spider
     print(f"\nSpidering Complete. {count_url_final} pages parsed, {count_email_final} emails found.")
     exit()
 
@@ -236,18 +241,20 @@ for index, argument in enumerate(sys.argv[1:]):
     else:
         if not domain:
             domain = argument
+            base_url = f"https://{argument}"
 
 print_initial_output(base_url, domain, num_pages_to_spider)
 
+if not url_database_file:
+    url_database_file = f"{domain}-url_database.csv"
+if not email_database_file:
+    email_database_file = f"{domain}-email_database.csv"
 check_if_files_exist(email_database_file, url_database_file, base_url)
 
-if os.path.exists(email_database_file):
-    with open(email_database_file) as file:
-        while (line := file.readline().rstrip()):
-            email_database.append(line)
-else:
-    with open(email_database_file, 'w') as document:
-        pass
+with open(email_database_file) as file:
+    while (line := file.readline().rstrip()):
+        email_database.append(line)
+
 
 i = 0
 while i < num_pages_to_spider:
