@@ -6,6 +6,7 @@ import re
 import sys
 import time
 
+
 # ---------------#
 # VARIABLES      #
 # ---------------#
@@ -40,7 +41,7 @@ url_database_file = ''
 # FUNCTIONS      #
 # ---------------#
 
-def check_if_files_exist(l_email_database_file, l_url_database_file,l_base_url):
+def check_if_files_exist(l_email_database_file, l_url_database_file, l_base_url):
     try:
         open(url_database_file)
     except FileNotFoundError:
@@ -158,7 +159,7 @@ def check_url(l_url, l_domain):
         if l_url.startswith("http"):
             l_new_unchecked_url = l_url
         else:
-            l_new_unchecked_url = f"https://{l_url}" #TODO: Fix this to allow non-https
+            l_new_unchecked_url = f"https://{l_url}"  # TODO: Fix this to allow non-https
     else:
         url_should_be_parsed = False
         l_new_unchecked_url = l_url
@@ -170,12 +171,16 @@ def help_menu():
     print("Title: Email Scraper")
     print("Author: Luke Lauterbach - Sentinel Technologies")
     print("")
-    print("Usage: python3 [script] -e [Email Domain to Look For] -p [Root Page to Start Spidering]")
+    print("Usage: python3 [script] [Domain to Search]")
     print("")
     print("Optional Options:")
+    print("    -e:  Specify an email domain that is different than the root webpage being spidered.")
+    print("    -r:  Root page to spider.")
+    print("    -p:  Parameter Mode - By default, the script will ignore parameters in links."
+          "With -p, parameters will be treated as individual links")
     print("    -n:  Number of pages to spider")
     print("    -o:  Output filename")
-    print("    -d:  Add a delay between web requests")
+    print("    -d:  Add a delay between web requests (in seconds)")
     print("    -db:  Debug Output")
     quit()
 
@@ -212,6 +217,7 @@ def print_ending(l_email_database_file, l_url_database_file):
     print(f"\nSpidering Complete. {count_url_final} pages parsed, {count_email_final} emails found.")
     exit()
 
+
 # ---------------#
 # EXECUTION      #
 # ---------------#
@@ -220,23 +226,25 @@ def print_ending(l_email_database_file, l_url_database_file):
 for index, argument in enumerate(sys.argv[1:]):
     if argument == "--help" or argument == "-h":
         help_menu()
+    elif argument == "-d" or argument == "--delay":
+        delay_mode = True
+    elif argument == "-db" or argument == "--debug":
+        debug_mode = True
     elif argument == "-e" or argument == "--email":
         domain = sys.argv[index + 2]
         url_database_file = f"{domain}-url_database.csv"
         email_database_file = f"{domain}-email_database.csv"
-    elif argument == "-p" or argument == "--root-page":
-        base_url = sys.argv[index + 2]
     elif argument == "-n" or argument == "--number-pages":
         num_pages_to_spider = int(sys.argv[index + 2])
     elif argument == "-o" or argument == "--out-filename":
         url_database_file = f"{sys.argv[index + 2]}-url_database.csv"
         email_database_file = f"{sys.argv[index + 2]}-email_database.csv"
-    elif argument == "-d" or argument == "--delay":
-        delay_mode = True
+    elif argument == "-p" or argument == "--parameter-mode":
+        parameter_mode = True
+    elif argument == "-r" or argument == "--root-page":
+        base_url = sys.argv[index + 2]
         delay = sys.argv[index + 2]
-    elif argument == "-db" or argument == "--debug":
-        debug_mode = True
-    elif sys.argv[index] in {'-d', '-p', '-n', '-o'}:
+    elif sys.argv[index] in {'-d', '-r', '-n', '-o'}:
         pass
     else:
         if not domain:
@@ -254,7 +262,6 @@ check_if_files_exist(email_database_file, url_database_file, base_url)
 with open(email_database_file) as file:
     while (line := file.readline().rstrip()):
         email_database.append(line)
-
 
 i = 0
 while i < num_pages_to_spider:
