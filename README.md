@@ -59,7 +59,7 @@ This script relies on Google's Programmable Search Engine, which will require a 
 ## Usage
 
 ```shell
-python3 emailScraper.py -e [EMAIL DOMAIN] -p [INITIAL PAGE TO SCRAPE] 
+python3 [script] [Domain to Search]
 ```
 
 ## Options
@@ -67,7 +67,8 @@ Options | Description
 -|-
 -h | Help Menu
 -e | Email domain to look for
--p | Root page to start searching
+-r | Root page to start searching
+-p |  Parameter Mode - By default, the script will ignore parameters in links. With -p, parameters will be treated as individual links.
 -n | Number of pages to spider (optional)
 -o | Output filename (will default to the email domain name)
 -d | Add a delay between web requests
