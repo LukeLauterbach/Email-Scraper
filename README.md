@@ -39,6 +39,8 @@
 
 This script will automatically spider a website, hunting for email addresses on each page. A database of scraped URLs will be kept with the status of if these pages have been scraped, allowing spidering to continue at a later time.
 
+Disclaimer: This script can be used for a variety of purposes, including by organizations to check what email addresses are publicly available on their website. The author is not responsible for how the script is used.
+
 ![image](https://user-images.githubusercontent.com/104774644/225120128-d68bc49a-9049-4a9d-9107-276e8d24b960.png)
 
 
