@@ -5,11 +5,16 @@ from urllib.error import HTTPError
 import re
 import sys
 import time
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import InvalidArgumentException, WebDriverException
+import html
 
 
 # ---------------#
 # VARIABLES      #
 # ---------------#
+
 
 # Define colors used for console output
 class bColors:
@@ -36,10 +41,22 @@ num_pages_to_spider = 1000000000
 parameter_mode = False
 url_database_file = ''
 
+chrome_options = Options()
+#chrome_options.add_argument("--headless=new")
+chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
+browser = webdriver.Chrome(options=chrome_options)
+
 
 # ---------------#
 # FUNCTIONS      #
 # ---------------#
+
+
+def check_for_http(l_url):
+    if not l_url.startswith("http"):
+        l_url = f"https://{l_url}"  # TODO: Fix this to allow non-https
+    return l_url
+
 
 def check_if_files_exist(l_email_database_file, l_url_database_file, l_base_url):
     try:
@@ -58,7 +75,7 @@ def get_next_url():
     global line_count
     line_count = 0
     if os.path.exists(url_database_file):
-        with open(url_database_file) as csv_file:
+        with open(url_database_file, encoding="utf-8") as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
 
             for csv_row in csv_reader:
@@ -78,41 +95,44 @@ def mark_url_parsed(l_url):
     except OSError:
         pass
     os.rename(url_database_file, temp_url_database_file)
-    with open(temp_url_database_file) as csv_file:
+    with open(temp_url_database_file, encoding="utf-8") as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
         for row in csv_reader:
             if row[0] == l_url:
-                with open(url_database_file, 'a') as fd:
+                with open(url_database_file, 'a', encoding="utf-8") as fd:
                     fd.write(f'{row[0]},true\n')
             else:
-                with open(url_database_file, 'a') as fd:
+                with open(url_database_file, 'a', encoding="utf-8") as fd:
                     fd.write(f'{row[0]},{row[1]}\n')
     os.remove(temp_url_database_file)
 
 
 def page_parse(page_url):
     try:
-        page = urllib.request.urlopen(page_url)
-        page_bytes = page.read()
-        try:
-            page_html = page_bytes.decode("utf8")
-        except UnicodeDecodeError:
-            page_html = page_bytes.decode("latin1")
-        page.close()
+        browser.get(page_url)
+        if delay_mode:
+            time.sleep(delay)
+        page_html = browser.page_source
     except HTTPError as err:
-        if debug_mode is True:
-            print(f"{err.code} Error: {page_url}")
+        if err.code == 403:
+            print(f"{bColors.FAIL}{err.code} Error. This likely means a WAF is preventing the script's traffic. "
+                  f"{bColors.ENDC} {page_url}")
+        elif debug_mode is True:
+            print(f"{bColors.FAIL}{err.code} Error:{bColors.ENDC} {page_url}")
     except urllib.error.URLError:
         if debug_mode is True:
-            print(f"DNS Lookup Failed: {page_url}")
+            print(f"{bColors.FAIL}DNS Lookup Failed:{bColors.ENDC} {page_url}")
+    except WebDriverException:
+        if debug_mode is True:
+            print(f"{bColors.FAIL}Connection Timed Out:{bColors.ENDC} {page_url}")
     else:
         # Spider for Additional URLs
-        urls = re.findall(r"a href=\"(.+?)[\"\'\s]", page_html)
+        urls = re.findall(r"href=\"(.+?)[\"\'\s]", page_html)
         for new_unchecked_url in urls:
-
+            new_unchecked_url = html.unescape(new_unchecked_url)  # Convert HTML URL to URL
             # We don't want to infinitely spider the internet. This will check to make sure the URL is contained
             #   within the domain.
-            url_should_be_parsed, new_unchecked_url = check_url(new_unchecked_url, domain)
+            url_should_be_parsed, new_unchecked_url = check_url(new_unchecked_url, domain, page_url)
 
             if url_should_be_parsed is True:
                 url_match = False
@@ -123,17 +143,17 @@ def page_parse(page_url):
                     new_unchecked_url = new_unchecked_url.split('?')[0]
                 new_unchecked_url = new_unchecked_url.removesuffix('/')
 
-                with open(url_database_file) as csv_file:
+                with open(url_database_file, encoding="utf-8") as csv_file:
                     csv_reader = csv.reader(csv_file, delimiter=',')
                     for csv_row in csv_reader:
                         if csv_row[0] == new_unchecked_url and url_match is False:
                             url_match = True
                 if url_match is False:
-                    with open(url_database_file, 'a') as fd:
+                    with open(url_database_file, 'a', encoding="utf-8") as fd:
                         fd.write(f'{new_unchecked_url},false\n')
 
         # Hunt for Emails
-        regex_string = "[A-zÀ-ÿ]+\@" + domain
+        regex_string = "[A-zÀ-ÿ0-9._%+-]+\@" + domain
         emails = re.findall(regex_string, page_html)
 
         for new_unchecked_email in emails:
@@ -149,20 +169,22 @@ def page_parse(page_url):
     mark_url_parsed(page_url)
 
 
-def check_url(l_url, l_domain):
+def check_url(l_url, l_domain, l_old_url):
     url_should_be_parsed = False
     if l_url.startswith("/"):
         url_should_be_parsed = True
+
+        l_base_domain = re.findall(r"(.+?\/\/[^\/]+)", l_old_url)
+
         l_new_unchecked_url = base_url + l_url
     elif l_domain in l_url and "mailto:" not in l_url and "@" not in l_url:
         url_should_be_parsed = True
-        if l_url.startswith("http"):
-            l_new_unchecked_url = l_url
-        else:
-            l_new_unchecked_url = f"https://{l_url}"  # TODO: Fix this to allow non-https
+        l_new_unchecked_url = l_url
     else:
         url_should_be_parsed = False
         l_new_unchecked_url = l_url
+
+    l_new_unchecked_url = check_for_http(l_new_unchecked_url)
 
     return url_should_be_parsed, l_new_unchecked_url
 
@@ -190,7 +212,7 @@ def status_update(l_url_database, l_email_database):
     l_count_total = 0
     l_count_email = 0
 
-    with open(l_url_database) as csv_file:
+    with open(l_url_database, encoding="utf-8") as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
         for csv_row in csv_reader:
             l_count_total += 1
@@ -210,8 +232,8 @@ def print_initial_output(l_url, l_domain, l_max):
 
 
 def print_ending(l_email_database_file, l_url_database_file):
-    count_email_final = sum(1 for l_line in open(l_email_database_file))
-    count_url_final = sum(1 for l_line in open(l_url_database_file))
+    count_email_final = sum(1 for l_line in open(l_email_database_file, encoding="utf-8"))
+    count_url_final = sum(1 for l_line in open(l_url_database_file, encoding="utf-8"))
     if count_url_final > num_pages_to_spider:
         count_url_final = num_pages_to_spider
     print(f"\nSpidering Complete. {count_url_final} pages parsed, {count_email_final} emails found.")
@@ -228,6 +250,7 @@ for index, argument in enumerate(sys.argv[1:]):
         help_menu()
     elif argument == "-d" or argument == "--delay":
         delay_mode = True
+        delay = float(sys.argv[index + 2])
     elif argument == "-db" or argument == "--debug":
         debug_mode = True
     elif argument == "-e" or argument == "--email":
@@ -242,14 +265,13 @@ for index, argument in enumerate(sys.argv[1:]):
     elif argument == "-p" or argument == "--parameter-mode":
         parameter_mode = True
     elif argument == "-r" or argument == "--root-page":
-        base_url = sys.argv[index + 2]
-        delay = sys.argv[index + 2]
+        base_url = check_for_http(sys.argv[index + 2])
     elif sys.argv[index] in {'-d', '-r', '-n', '-o'}:
         pass
     else:
         if not domain:
             domain = argument
-            base_url = f"https://{argument}"
+            base_url = check_for_http(argument)
 
 print_initial_output(base_url, domain, num_pages_to_spider)
 
@@ -260,19 +282,25 @@ if not email_database_file:
 check_if_files_exist(email_database_file, url_database_file, base_url)
 
 with open(email_database_file) as file:
-    while (line := file.readline().rstrip()):
+    while line := file.readline().rstrip():
         email_database.append(line)
 
 i = 0
 while i < num_pages_to_spider:
     try:
-        page_parse(get_next_url())
+        url = get_next_url()
+        if url:
+            page_parse(url)
+        else:
+            print_ending(email_database_file, url_database_file)
     except AttributeError:
+        print_ending(email_database_file, url_database_file)
+    except InvalidArgumentException:
         print_ending(email_database_file, url_database_file)
     if i % 100 == 0:
         status_update(url_database_file, email_database_file)
-    if delay_mode is True:
-        time.sleep(float(delay))
     i += 1
 
 print_ending(email_database_file, url_database_file)
+
+browser.quit()
