@@ -83,6 +83,7 @@ def page_parse(url="", browser=None, verbose=False, domain=""):
                 or "err_aborted" in msg
                 or "err_name_not_resolved" in msg
                 or "err_connection_refused" in msg
+                or "chrome-error://" in msg
         ):
             if verbose:
                 print(f"Navigation/download error for {url}: {e}. Skipping.")
