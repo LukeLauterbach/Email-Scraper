@@ -3,7 +3,7 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "Email Spider"
+name = "emailspider"
 version = "0.1.0"
 description = "An email scraping utility built with Playwright to avoid anti-bot detections."
 readme = "README.md"
