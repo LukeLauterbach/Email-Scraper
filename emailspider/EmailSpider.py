@@ -22,7 +22,6 @@ class Colors:  # Define colors used for console output
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-DEBUG_MODE = False
 
 
 def process_variables(domain="", root_page="", output_directory="", get_file_ext="", num_pages=0, verbose=False):
@@ -66,7 +65,8 @@ def main(domain="",  # There has to be a better way to format this.
          verbose=False,
          get_file_mode=False,
          get_file_ext="",
-         get_file_max=0):
+         get_file_max=0,
+         debug_mode=False):
     if not domain:
         (root_page, num_pages, output_directory, get_file_mode, get_file_ext, get_file_max,
          verbose_mode, domain, debug_mode) = parse_arguments()
