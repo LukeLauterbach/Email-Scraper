@@ -2,7 +2,7 @@ from tqdm import tqdm
 from urllib.parse import urlparse, urljoin
 from emailspider import dedupe_url_database, initialize_playwright, look_for_emails, check_urls
 from bs4 import BeautifulSoup
-from patchright.sync_api import sync_playwright
+from patchright.sync_api import sync_playwright, TimeoutError
 
 def main(email_db_file, url_db_file, url_database=None, email_database=None, root_page=None, domain=None,
                  verbose=True, max_pages=0, debug_mode=False):
