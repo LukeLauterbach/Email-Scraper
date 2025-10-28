@@ -71,24 +71,8 @@ def page_parse(url="", browser=None, verbose=False, domain=""):
     try:
         browser.goto(url, timeout=7000)
         page_html = browser.content()
-    except TimeoutError:
-        if verbose:
-            print(f"Timeout loading {url}. Skipping.")
+    except Exception:
         return [], []
-    except Exception as e:
-        msg = str(e).lower()
-        # keep only essential checks, skip if the error text indicates a download or obvious network failure
-        if (
-                "download is starting" in msg
-                or "err_aborted" in msg
-                or "err_name_not_resolved" in msg
-                or "err_connection_refused" in msg
-        ):
-            if verbose:
-                print(f"Navigation/download error for {url}: {e}. Skipping.")
-            return [], []
-        # unexpected errors: re-raise so you can see them
-        raise
 
     soup = BeautifulSoup(page_html, 'html.parser')
     for a_tag in soup.find_all('a', href=True):
