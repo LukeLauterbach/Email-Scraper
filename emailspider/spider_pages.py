@@ -73,37 +73,8 @@ def page_parse(url="", browser=None, verbose=False, domain=""):
     try:
         browser.goto(url, timeout=7000)
         page_html = browser.content()
-    except TimeoutError:
-        if verbose:
-            print(f"Timeout loading {url}. Skipping.")
+    except Exception:
         return [], []
-    except Exception as e:
-        msg = str(e).lower()
-        # keep only essential checks, skip if the error text indicates a download or obvious network failure
-        if (
-                "download is starting" in msg
-                or "err_aborted" in msg
-                or "err_name_not_resolved" in msg
-                or "err_connection_refused" in msg
-                or "chrome-error://" in msg
-        ):
-            if verbose:
-                print(f"Navigation/download error for {url}: {e}. Skipping.")
-            return [], []
-        if "is interrupted by another navigation" in msg:
-            # In this scenario Playwright aborted the first navigation because the page triggered
-            # a follow-up navigation (for example a client-side redirect). Wait for the new page
-            # to settle so we can continue parsing instead of skipping the URL entirely.
-            try:
-                browser.wait_for_load_state("load", timeout=3000)
-                page_html = browser.content()
-            except Exception:
-                if verbose:
-                    print(f"Navigation interrupted for {url}: {e}. Skipping.")
-                return [], []
-        else:
-            # unexpected errors: re-raise so you can see them
-            raise
 
     if not page_html:
         return [], []
