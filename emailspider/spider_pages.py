@@ -68,10 +68,15 @@ def page_parse(url="", browser=None, verbose=False, domain=""):
 
     url = ensure_scheme(url)
 
+    page_html = ""
+
     try:
         browser.goto(url, timeout=7000)
         page_html = browser.content()
     except Exception:
+        return [], []
+
+    if not page_html:
         return [], []
 
     soup = BeautifulSoup(page_html, 'html.parser')
