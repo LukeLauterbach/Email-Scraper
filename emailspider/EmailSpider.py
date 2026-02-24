@@ -113,7 +113,7 @@ def main(domain="",  # There has to be a better way to format this.
         get_files(get_file_ext, url_database, verbose, get_file_max)
 
     print_ending(url_database, email_database, email_db_file, page_db_file, get_file_mode)
-    return email_database
+    return 0
 
 
 
