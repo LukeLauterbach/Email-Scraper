@@ -3,9 +3,12 @@ import os
 from urllib.parse import urlparse, urljoin
 import re
 import logging
+from importlib.metadata import PackageNotFoundError, version as package_version
 from patchright.sync_api import Playwright, sync_playwright, expect, Error
 from patchright._impl._errors import TimeoutError, TargetClosedError
 from time import sleep
+from rich.console import Console
+from rich.panel import Panel
 from emailspider import spider_pages
 
 
@@ -22,6 +25,11 @@ class Colors:  # Define colors used for console output
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+try:
+    APP_VERSION = package_version("emailspider")
+except PackageNotFoundError:
+    APP_VERSION = "dev"
 
 
 def process_variables(domain="", root_page="", output_directory="", get_file_ext="", num_pages=0, verbose=False):
@@ -65,11 +73,12 @@ def main(domain="",  # There has to be a better way to format this.
          verbose=False,
          get_file_mode=False,
          get_file_ext="",
-         get_file_max=0,
+         get_file_max=None,
          debug_mode=False):
+    show_max_pages = get_file_max is not None
     if not domain:
         (root_page, num_pages, output_directory, get_file_mode, get_file_ext, get_file_max,
-         verbose_mode, domain, debug_mode) = parse_arguments()
+         show_max_pages, verbose_mode, domain, debug_mode) = parse_arguments()
 
     (root_page,
      num_pages,
@@ -83,7 +92,13 @@ def main(domain="",  # There has to be a better way to format this.
                                        get_file_ext=get_file_ext,
                                        verbose=verbose)
 
-    print_initial_output(num_pages=num_pages, root_page=root_page, domain=domain, verbose=verbose)
+    print_initial_output(
+        num_pages=num_pages,
+        root_page=root_page,
+        domain=domain,
+        verbose=verbose,
+        show_max_pages=show_max_pages,
+    )
 
     email_database, url_database = read_databases(email_db_file=email_db_file, page_db_file=page_db_file,
                                                   verbose=verbose, root_page=root_page)
@@ -189,7 +204,8 @@ def get_file_urls(get_file_ext, url_database):
 def print_ending(url_database, email_database, email_db_file, page_db_file, get_file_mode):
     print(f"\nSpidering complete. {len(url_database)} URLs parsed, {len(email_database)} unique emails found.")
     print(f"URLs written to: {page_db_file}")
-    print(f"Emails written to: {email_db_file}")
+    if email_database:
+        print(f"Emails written to: {email_db_file}")
     if get_file_mode:
         print(f"Downloaded files written to: downloaded_files")
 
@@ -221,16 +237,31 @@ def read_databases(email_db_file="", page_db_file="", verbose=False, root_page=N
     return email_database, page_database
 
 
-def print_initial_output(num_pages=0, root_page="", domain="", verbose=False):
+def print_initial_output(num_pages=0, root_page="", domain="", verbose=False, show_max_pages=False):
+    def format_value(value):
+        if isinstance(value, list):
+            return ", ".join(str(item) for item in value)
+        return str(value)
+
     if num_pages == 1000000000:
         max_num_pages_display = "Unlimited"
     else:
         max_num_pages_display = num_pages
-    print(f"\n{Colors.HEADER}{Colors.BOLD}Email Scraper{Colors.ENDC}\n")
-    print(f"Searching {root_page} for {domain} email addresses.")
+    Console().print(
+        Panel.fit(
+            f"[bold cyan]Email Spider[/]\n"
+            f"[dim]Author: Luke Lauterbach (Sentinel Technologies)\n"
+            f"Version: {APP_VERSION}[/dim]",
+            border_style="cyan",
+            padding=(0, 2),
+        )
+    )
+    print(f"Searching {format_value(root_page)} for {format_value(domain)} email addresses.")
     if verbose:
         print(f"Verbose Mode: True")
-    print(f"Maximum Number of Pages to Search: {max_num_pages_display}\n")
+    if show_max_pages:
+        print(f"Maximum Number of Pages to Search: {max_num_pages_display}")
+    print()
 
 
 def parse_arguments():
@@ -243,7 +274,7 @@ def parse_arguments():
     parser.add_argument('-gf', dest="get_file_mode", action="store_true",
                         help="Get files to be used with ExifTool")
     parser.add_argument('-gfe', dest="get_file_ext", help="Manually specify file extenions to get")
-    parser.add_argument('-gfm', dest="get_file_max", default=100000,
+    parser.add_argument('-gfm', dest="get_file_max", default=None,
                         help="Max Files to Get (Defaults to Unlimited)")
     parser.add_argument('-v', dest='verbose_mode', action="store_true", help="Verbose Mode")
     parser.add_argument('-db', dest='debug_mode', action="store_true", default=False, help="Turn on Debugging")
@@ -251,14 +282,18 @@ def parse_arguments():
     args = parser.parse_args()
 
     args.num_pages = int(args.num_pages)
-    args.get_file_max = int(args.get_file_max)
+    get_file_max_specified = args.get_file_max is not None
+    if args.get_file_max is None:
+        args.get_file_max = 100000
+    else:
+        args.get_file_max = int(args.get_file_max)
 
     domain = args.domain
     if not domain:
         domain = input("Please enter the domain: ").strip()
 
     return (args.root_page, args.num_pages, args.output_directory, args.get_file_mode, args.get_file_ext,
-            args.get_file_max, args.verbose_mode, domain, args.debug_mode)
+            args.get_file_max, get_file_max_specified, args.verbose_mode, domain, args.debug_mode)
 
 
 if __name__ == '__main__':
