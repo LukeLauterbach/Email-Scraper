@@ -134,6 +134,7 @@ def get_files(get_file_ext, url_database, verbose, get_file_max, get_file_dir="d
             headless=True,
             accept_downloads=True,
             downloads_path=get_file_dir,
+            ignore_https_errors=True,
         )
         page = context.new_page()
 
