@@ -9,7 +9,7 @@ def main(playwright, headless=False):
     subprocess.run([patchright_cmd, "install"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     browser = playwright.chromium.launch(headless=False)
-    context = browser.new_context()
+    context = browser.new_context(ignore_https_errors=True)
     page = context.new_page()
 
     page.route("**/*.{png,jpg,jpeg,svg,gif}", lambda route: route.abort())
