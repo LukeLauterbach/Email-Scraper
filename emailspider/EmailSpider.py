@@ -157,14 +157,15 @@ def get_files(get_file_ext, url_database, verbose, get_file_max, get_file_dir="d
                     try:
                         page.goto(url, timeout=7000)
                     except Error as nav_err:
-                        # swallow the "navigation aborted" error for attachments
-                        if "ERR_ABORTED" in str(nav_err):
+                        # For direct attachment URLs, patchright may raise while still
+                        # emitting a download event. Treat these as non-fatal.
+                        nav_msg = str(nav_err)
+                        if "ERR_ABORTED" in nav_msg or "Download is starting" in nav_msg:
                             if verbose:
-                                print(f"⚠ navigation aborted for {url!r}, skipping")
-                            # jump to next URL
-                            continue
-                        # other navigation errors should bubble
-                        raise
+                                print(f"⚠ navigation interrupted for {url!r}; waiting for download event")
+                        else:
+                            # other navigation errors should bubble
+                            raise
 
                 download = dl_info.value
                 # use whatever the server suggests, or fallback to fname
