@@ -119,7 +119,7 @@ def main(domain="",  # There has to be a better way to format this.
 
 def get_files(get_file_ext, url_database, verbose, get_file_max, get_file_dir="downloaded_files"):
     files_to_get     = get_file_urls(get_file_ext, url_database)
-    num_files_to_get = min(len(files_to_get), get_file_max)
+    num_files_to_get = len(files_to_get) if get_file_max is None else min(len(files_to_get), int(get_file_max))
 
     print(f"\nPreparing to download {num_files_to_get} files to {get_file_dir!r}.")
     os.makedirs(get_file_dir, exist_ok=True)
