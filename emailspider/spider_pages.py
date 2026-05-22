@@ -21,6 +21,11 @@ def main(email_db_file, url_db_file, url_database=None, email_database=None, roo
     pages_processed = 0
     url_database = assemble_url_database(url_database, root_page)
     dedupe_url_database.main(url_database)
+    failed_urls = []
+
+    if all(item["PARSED"] for item in url_database):
+        print("Existing URL database has no unparsed URLs. Delete the URL CSV or use a different output directory to crawl again.")
+        return url_database, email_database
 
     progress = Progress(
         SpinnerColumn(),
@@ -40,7 +45,7 @@ def main(email_db_file, url_db_file, url_database=None, email_database=None, roo
         )
 
         with sync_playwright() as playwright:
-            browser, context, page = initialize_playwright.main(playwright, headless=debug_mode)
+            browser, context, page = initialize_playwright.main(playwright, headless=False)
             i = 0
             while i < len(url_database):
                 entry = url_database[i]
@@ -48,12 +53,18 @@ def main(email_db_file, url_db_file, url_database=None, email_database=None, roo
                     i += 1
                     continue
 
-                observed_urls, observed_emails = page_parse(
+                observed_urls, observed_emails, parsed = page_parse(
                     url=entry["URL"],
                     browser=page,
                     verbose=verbose,
                     domain=domain,
                 )
+
+                if not parsed:
+                    failed_urls.append(entry["URL"])
+                    i += 1
+                    continue
+
                 observed_urls = check_urls.main(observed_urls, root_pages=root_page, source_url=entry["URL"])
 
                 # Avoid appending duplicate URLs discovered from the same crawl pass.
@@ -87,6 +98,8 @@ def main(email_db_file, url_db_file, url_database=None, email_database=None, roo
                 i += 1
 
     write_databases_to_file(email_db_file, email_database, url_db_file, url_database)
+    if failed_urls:
+        print(f"Failed to load {len(failed_urls)} URL(s); they were left unparsed for a future retry.")
 
     return url_database, email_database
 
@@ -101,11 +114,15 @@ def page_parse(url="", browser=None, verbose=False, domain=""):
     try:
         browser.goto(url, timeout=7000)
         page_html = browser.content()
-    except Exception:
-        return [], []
+    except Exception as exc:
+        if verbose:
+            print(f"Failed to load {url}: {exc}")
+        return [], [], False
 
     if not page_html:
-        return [], []
+        if verbose:
+            print(f"No page content returned for {url}")
+        return [], [], False
 
     soup = BeautifulSoup(page_html, 'html.parser')
     for a_tag in soup.find_all('a', href=True):
@@ -117,7 +134,7 @@ def page_parse(url="", browser=None, verbose=False, domain=""):
         valid_urls.append(href)
 
     emails_found = look_for_emails.main(page_html=page_html, domains=domain)
-    return valid_urls, emails_found
+    return valid_urls, emails_found, True
 
 
 def write_databases_to_file(email_db_file, email_database, url_db_file, url_database):
