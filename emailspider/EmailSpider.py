@@ -54,16 +54,25 @@ def process_variables(domain="", root_page="", output_directory="", get_file_ext
     if isinstance(domain, str):
         domain = domain.split(",")
     # Ensure each root page has a scheme for Selenium
-    root_page = [spider_pages.ensure_scheme(p) for p in root_page]
+    root_page = [spider_pages.ensure_scheme(p.strip()) for p in root_page if p.strip()]
     # Lowercase all of the domains
     root_page = [p.lower() for p in root_page]
 
-    domain = [d.lower() for d in domain]
+    domain = [normalize_email_domain(d) for d in domain if d.strip()]
 
     email_db_file = os.path.join(output_directory, f"{domain[0]}-emails.csv")
     page_db_file = os.path.join(output_directory, f"{domain[0]}-urls.csv")
 
-    return (root_page, num_pages, output_directory, get_file_ext, email_db_file, page_db_file)
+    return (root_page, domain, num_pages, output_directory, get_file_ext, email_db_file, page_db_file)
+
+
+def normalize_email_domain(domain):
+    domain = domain.strip().lower().lstrip("@")
+    parsed = urlparse(spider_pages.ensure_scheme(domain))
+    hostname = parsed.hostname or domain
+    if hostname.startswith("www."):
+        hostname = hostname[4:]
+    return hostname
 
 
 def main(domain="",  # There has to be a better way to format this.
@@ -81,6 +90,7 @@ def main(domain="",  # There has to be a better way to format this.
          show_max_pages, verbose_mode, domain, debug_mode) = parse_arguments()
 
     (root_page,
+     domain,
      num_pages,
      output_directory,
      get_file_ext,

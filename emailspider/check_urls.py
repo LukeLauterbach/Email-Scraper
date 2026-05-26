@@ -4,7 +4,7 @@ def main(list_of_urls, root_pages=None, source_url=""):
     if root_pages is None:
         root_pages = []
     else:  # Get rid of the schemes
-        root_pages = [urlparse(url).netloc for url in root_pages]
+        root_pages = [normalize_hostname(urlparse(url).netloc) for url in root_pages]
 
     invalid_prefixes = [
         "tel:", "http://webcal://", "https://webcal://", "mailto:", "#", "javascript",
@@ -33,11 +33,12 @@ def main(list_of_urls, root_pages=None, source_url=""):
 
         scheme = parsed_url.scheme if parsed_url.scheme else source_url.scheme
         hostname = parsed_url.netloc.lower() if parsed_url.netloc else source_url.netloc.lower()
+        normalized_hostname = normalize_hostname(hostname)
 
         # Handle relative URLs (no hostname)
         if not hostname:
             continue
-        elif not any(allowed in hostname for allowed in root_pages):
+        elif not any(hostname_matches_root(normalized_hostname, allowed) for allowed in root_pages):
             # URL's hostname doesn't match allowed root domains
             continue
         else:
@@ -46,3 +47,14 @@ def main(list_of_urls, root_pages=None, source_url=""):
             valid_urls.append(url)
 
     return valid_urls
+
+
+def normalize_hostname(hostname):
+    hostname = hostname.lower()
+    if hostname.startswith("www."):
+        return hostname[4:]
+    return hostname
+
+
+def hostname_matches_root(hostname, root):
+    return hostname == root or hostname.endswith(f".{root}")
