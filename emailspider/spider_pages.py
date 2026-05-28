@@ -15,8 +15,13 @@ from rich.progress import (
 from emailspider import dedupe_url_database, initialize_playwright, look_for_emails, check_urls
 
 
+DEFAULT_PAGE_TIMEOUT_MS = 7000
+NETWORK_IDLE_PAGE_TIMEOUT_MS = 30000
+NETWORK_IDLE_SETTLE_MS = 3000
+
+
 def main(email_db_file, url_db_file, url_database=None, email_database=None, root_page=None, domain=None,
-         verbose=True, max_pages=0, debug_mode=False):
+         verbose=True, max_pages=0, debug_mode=False, wait_for_network_idle=False):
     total_pages_processed = sum(item["PARSED"] for item in url_database)
     pages_processed = 0
     url_database = assemble_url_database(url_database, root_page)
@@ -58,6 +63,7 @@ def main(email_db_file, url_db_file, url_database=None, email_database=None, roo
                     browser=page,
                     verbose=verbose,
                     domain=domain,
+                    wait_for_network_idle=wait_for_network_idle,
                 )
 
                 if not parsed:
@@ -104,7 +110,7 @@ def main(email_db_file, url_db_file, url_database=None, email_database=None, roo
     return url_database, email_database
 
 
-def page_parse(url="", browser=None, verbose=False, domain=""):
+def page_parse(url="", browser=None, verbose=False, domain="", wait_for_network_idle=False):
     valid_urls = []
 
     url = ensure_scheme(url)
@@ -112,7 +118,11 @@ def page_parse(url="", browser=None, verbose=False, domain=""):
     page_html = ""
 
     try:
-        browser.goto(url, timeout=7000)
+        wait_until = "networkidle" if wait_for_network_idle else "load"
+        timeout = NETWORK_IDLE_PAGE_TIMEOUT_MS if wait_for_network_idle else DEFAULT_PAGE_TIMEOUT_MS
+        browser.goto(url, timeout=timeout, wait_until=wait_until)
+        if wait_for_network_idle:
+            browser.wait_for_timeout(NETWORK_IDLE_SETTLE_MS)
         page_html = browser.content()
     except Exception as exc:
         if verbose:

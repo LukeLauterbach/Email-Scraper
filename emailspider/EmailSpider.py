@@ -83,11 +83,12 @@ def main(domain="",  # There has to be a better way to format this.
          get_file_mode=False,
          get_file_ext="",
          get_file_max=None,
-         debug_mode=False):
+         debug_mode=False,
+         wait_for_network_idle=False):
     show_max_pages = get_file_max is not None
     if not domain:
         (root_page, num_pages, output_directory, get_file_mode, get_file_ext, get_file_max,
-         show_max_pages, verbose_mode, domain, debug_mode) = parse_arguments()
+         show_max_pages, verbose_mode, domain, debug_mode, wait_for_network_idle) = parse_arguments()
 
     (root_page,
      domain,
@@ -115,7 +116,8 @@ def main(domain="",  # There has to be a better way to format this.
     try:
         url_database, email_database = spider_pages.main(email_db_file, page_db_file, url_database=url_database,
                                                     email_database=email_database, root_page=root_page, domain=domain,
-                                                    verbose=verbose, max_pages=num_pages, debug_mode=debug_mode)
+                                                    verbose=verbose, max_pages=num_pages, debug_mode=debug_mode,
+                                                    wait_for_network_idle=wait_for_network_idle)
     except KeyboardInterrupt:
         pass
 
@@ -290,6 +292,8 @@ def parse_arguments():
                         help="Max Files to Get (Defaults to Unlimited)")
     parser.add_argument('-v', dest='verbose_mode', action="store_true", help="Verbose Mode")
     parser.add_argument('-db', dest='debug_mode', action="store_true", default=False, help="Turn on Debugging")
+    parser.add_argument('--wait-for-network-idle', dest='wait_for_network_idle', action="store_true", default=False,
+                        help="Wait until network activity stops before parsing each page")
 
     args = parser.parse_args()
 
@@ -305,7 +309,8 @@ def parse_arguments():
         domain = input("Please enter the domain: ").strip()
 
     return (args.root_page, args.num_pages, args.output_directory, args.get_file_mode, args.get_file_ext,
-            args.get_file_max, get_file_max_specified, args.verbose_mode, domain, args.debug_mode)
+            args.get_file_max, get_file_max_specified, args.verbose_mode, domain, args.debug_mode,
+            args.wait_for_network_idle)
 
 
 if __name__ == '__main__':

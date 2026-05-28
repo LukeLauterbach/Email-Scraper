@@ -75,5 +75,6 @@ Options | Description
 -o | Output filename (will default to the email domain name)
 -d | Add a delay between web requests
 -db | Debug Mode
+--wait-for-network-idle | Wait up to 30 seconds for network activity to stop, then pause 3 seconds before parsing each page
 
 <p align="right">(<a href="#top">back to top</a>)</p>
